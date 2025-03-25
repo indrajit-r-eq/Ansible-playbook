@@ -1,0 +1,22 @@
+---
+- name: Install File Management & Utilities on Windows hosts
+  hosts: windows
+  gather_facts: false
+  tasks:
+
+    # 1. Call Bitwise SSH Client installation
+    - name: Include Bitwise SSH Client installation
+      import_playbook: bitwise_ssh_client.yml
+
+    # 2. Call FileZilla installation
+    - name: Include FileZilla installation
+      import_playbook: filezilla.yml
+
+    # 3. Call CMDR installation
+    - name: Include CMDR installation
+      import_playbook: cmder.yml
+
+    # 4. Call WinRAR installation
+    - name: Include WinRAR installation
+      import_playbook: winrar.yml
+

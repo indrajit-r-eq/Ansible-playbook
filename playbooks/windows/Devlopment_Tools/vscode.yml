@@ -1,0 +1,65 @@
+---
+- name: Install Visual Studio Code on Windows
+  hosts: windows
+  gather_facts: yes
+  vars:
+    download_dir: "C:\\Users\\{{ ansible_user }}\\Downloads"
+    vscode_url: "https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user"
+  
+  tasks:
+    - name: Create download directory if it doesn't exist
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    - name: Download VS Code installer
+      win_get_url:
+        url: "{{ vscode_url }}"
+        dest: "{{ download_dir }}\\vscode_setup.exe"
+      register: vscode_download
+
+    - name: Install VS Code silently
+      win_package:
+        path: "{{ download_dir }}\\vscode_setup.exe"
+        arguments: "/VERYSILENT /NORESTART /MERGETASKS=!runcode"
+        state: present
+      when: vscode_download.changed
+      register: vscode_install
+
+    - name: Pause to allow installation to complete
+      win_shell: Start-Sleep -s 10
+      when: vscode_install.changed
+
+    - name: Verify VS Code installation
+      win_shell: |
+        $vscodePaths = @(
+          "C:\Program Files\Microsoft VS Code\Code.exe",
+          "C:\Program Files (x86)\Microsoft VS Code\Code.exe",
+          "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe"
+        )
+        
+        foreach ($path in $vscodePaths) {
+          if (Test-Path $path) {
+            Write-Output "VS Code found at: $path"
+            exit 0
+          }
+        }
+        Write-Error "VS Code executable not found"
+        exit 1
+      register: vscode_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display VS Code path
+      debug:
+        msg: "{{ vscode_check.stdout_lines | default(['VS Code installation could not be verified']) }}"
+
+    # Optional - Add VS Code to PATH if not already there
+    - name: Add VS Code to PATH
+      win_path:
+        elements:
+          - 'C:\Program Files\Microsoft VS Code\bin'
+          - 'C:\Program Files (x86)\Microsoft VS Code\bin'
+          - '%LOCALAPPDATA%\Programs\Microsoft VS Code\bin'
+        state: present
+      failed_when: false

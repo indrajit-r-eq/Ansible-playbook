@@ -1,0 +1,35 @@
+---
+- hosts: windows
+  vars:
+    temp_dir: C:\Temp
+    nodejs_url: https://nodejs.org/dist/v20.11.1/node-v20.11.1-x64.msi
+    nodejs_installer: "{{ temp_dir }}\\nodejs_installer.msi"
+
+  tasks:
+    - name: Create temp directory for installers
+      win_file:
+        path: "{{ temp_dir }}"
+        state: directory
+
+    - name: Download Node.js installer
+      win_get_url:
+        url: "{{ nodejs_url }}"
+        dest: "{{ nodejs_installer }}"
+        force: yes
+
+    - name: Install Node.js
+      win_package:
+        path: "{{ nodejs_installer }}"
+        state: present
+        arguments: 
+          - "/quiet"
+          - "/norestart"
+
+    - name: Verify Node.js installation
+      win_command: node --version
+      register: node_version
+      changed_when: false
+
+    - name: Display Node.js version
+      debug:
+        msg: "Installed Node.js version: {{ node_version.stdout }}"

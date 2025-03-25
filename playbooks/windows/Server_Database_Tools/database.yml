@@ -1,0 +1,20 @@
+---
+- name: Install MySQL Workbench on Windows using Chocolatey
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Ensure Chocolatey is installed
+      win_chocolatey:
+        name: chocolatey
+        state: present
+
+    - name: Install MySQL Workbench
+      win_chocolatey:
+        name: mysql.workbench
+        state: present
+      register: choco_result
+
+    - name: Display installation result
+      debug:
+        var: choco_result
+        verbosity: 1

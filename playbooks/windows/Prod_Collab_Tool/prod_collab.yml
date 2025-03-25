@@ -1,0 +1,185 @@
+---
+- name: Install Productivity & Collaboration Tools on Windows
+  hosts: all
+  gather_facts: yes
+  vars:
+    download_dir: "C:\\Temp\\software"
+    installers:
+      postman:
+        name: "Postman"
+        url: "https://dl.pstmn.io/download/latest/win64"
+        dest: "{{ download_dir }}\\postman_installer.exe"
+        install_args: "-silent"
+        verify_path: "C:\\Users\\Public\\Desktop\\Postman.lnk"
+      jira:
+        name: "Jira"
+        # Using Jira Work Management instead which has a more reliable link
+        url: "https://product-downloads.atlassian.com/software/jira/downloads/atlassian-jira-core-9.4.14-x64.exe"
+        dest: "{{ download_dir }}\\jira_installer.exe"
+        install_args: "-q"
+        verify_path: "C:\\Program Files\\Atlassian\\JIRA\\bin\\start-jira.bat"
+      lightshot:
+        name: "Lightshot"
+        url: "https://app.prntscr.com/build/setup-lightshot.exe"
+        dest: "{{ download_dir }}\\lightshot_installer.exe"
+        install_args: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+        verify_path: "C:\\Program Files (x86)\\Skillbrains\\lightshot\\Lightshot.exe"
+      ditto:
+        name: "Ditto"
+        url: "https://github.com/sabrogden/Ditto/releases/download/3.24.246.0/DittoSetup_64bit_3_24_246_0.exe"
+        dest: "{{ download_dir }}\\ditto_installer.exe"
+        install_args: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+        verify_path: "C:\\Program Files\\Ditto\\Ditto.exe"
+
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    # Download and install applications with reliable download links
+    - name: Download reliable installers
+      win_get_url:
+        url: "{{ item.value.url }}"
+        dest: "{{ item.value.dest }}"
+        timeout: 600
+      with_dict: "{{ installers }}"
+      register: download_results
+
+    - name: Install Postman
+      win_shell: Start-Process -FilePath "{{ installers.postman.dest }}" -ArgumentList "{{ installers.postman.install_args }}" -Wait
+      when: download_results is succeeded
+
+    - name: Install Jira
+      win_shell: Start-Process -FilePath "{{ installers.jira.dest }}" -ArgumentList "{{ installers.jira.install_args }}" -Wait
+      when: download_results is succeeded
+
+    - name: Install Lightshot
+      win_shell: Start-Process -FilePath "{{ installers.lightshot.dest }}" -ArgumentList "{{ installers.lightshot.install_args }}" -Wait
+      when: download_results is succeeded
+
+    - name: Install Ditto
+      win_shell: Start-Process -FilePath "{{ installers.ditto.dest }}" -ArgumentList "{{ installers.ditto.install_args }}" -Wait
+      when: download_results is succeeded
+
+    # Special handling for MS Office (Word)
+    - name: Create Office deployment configuration
+      win_copy:
+        dest: "{{ download_dir }}\\office_config.xml"
+        content: |
+          <Configuration>
+            <Add OfficeClientEdition="64" Channel="Current">
+              <Product ID="O365ProPlusRetail">
+                <Language ID="en-us" />
+                <ExcludeApp ID="Access" />
+                <ExcludeApp ID="Excel" />
+                <ExcludeApp ID="Groove" />
+                <ExcludeApp ID="Lync" />
+                <ExcludeApp ID="OneDrive" />
+                <ExcludeApp ID="OneNote" />
+                <ExcludeApp ID="Outlook" />
+                <ExcludeApp ID="PowerPoint" />
+                <ExcludeApp ID="Publisher" />
+                <ExcludeApp ID="Teams" />
+              </Product>
+            </Add>
+            <Property Name="SharedComputerLicensing" Value="0" />
+            <Property Name="FORCEAPPSHUTDOWN" Value="TRUE" />
+            <Property Name="DeviceBasedLicensing" Value="0" />
+            <Property Name="SCLCacheOverride" Value="0" />
+            <Updates Enabled="TRUE" />
+            <RemoveMSI />
+            <Display Level="None" AcceptEULA="TRUE" />
+          </Configuration>
+      
+    - name: Download Office Deployment Tool
+      win_get_url:
+        url: "https://download.microsoft.com/download/2/7/A/27AF1BE6-DD20-4CB4-B154-EBAB8A7D4A7E/officedeploymenttool_15427-20196.exe"
+        dest: "{{ download_dir }}\\ODT.exe"
+
+    - name: Extract Office Deployment Tool
+      win_shell: |
+        Start-Process -FilePath "{{ download_dir }}\ODT.exe" -ArgumentList "/extract:{{ download_dir }}\ODT /quiet" -Wait
+      
+    - name: Install MS Word using Office Deployment Tool
+      win_shell: |
+        cd "{{ download_dir }}\ODT"
+        .\setup.exe /configure "{{ download_dir }}\office_config.xml"
+      register: office_install_result
+      ignore_errors: yes
+
+    # Alternative method for Loom using PowerShell
+    - name: Download Loom (alternative method)
+      win_shell: |
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri "https://cdn.loom.com/desktop-packages/Loom%20Setup%202.8.1.exe" -OutFile "{{ download_dir }}\loom_installer.exe"
+      register: loom_download
+      ignore_errors: yes
+
+    - name: Install Loom
+      win_shell: |
+        Start-Process -FilePath "{{ download_dir }}\loom_installer.exe" -ArgumentList "--silent" -Wait
+      when: loom_download is succeeded
+      register: loom_install_result
+      ignore_errors: yes
+
+    # Alternative method for ProofHub (using browser download)
+    - name: Create PowerShell script to download ProofHub
+      win_copy:
+        dest: "{{ download_dir }}\\download_proofhub.ps1"
+        content: |
+          $ProgressPreference = 'SilentlyContinue'
+          $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+          $session.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+          try {
+            Invoke-WebRequest -Uri "https://proofhub.com/downloads/ProofHub-Setup.exe" -WebSession $session -OutFile "{{ download_dir }}\proofhub_installer.exe"
+            Write-Output "Download successful"
+          } catch {
+            Write-Output "Download failed: $_"
+            exit 1
+          }
+
+    - name: Run ProofHub download script
+      win_shell: |
+        powershell.exe -ExecutionPolicy Bypass -File "{{ download_dir }}\download_proofhub.ps1"
+      register: proofhub_download
+      ignore_errors: yes
+
+    - name: Install ProofHub if download succeeded
+      win_shell: |
+        if (Test-Path "{{ download_dir }}\proofhub_installer.exe") {
+          Start-Process -FilePath "{{ download_dir }}\proofhub_installer.exe" -ArgumentList "/S" -Wait
+          Write-Output "Installation attempted"
+        } else {
+          Write-Output "Installer not found"
+        }
+      register: proofhub_install
+      ignore_errors: yes
+
+    # Verify installations for applications that were attempted
+    - name: Verify successful installations
+      win_stat:
+        path: "{{ item.value.verify_path }}"
+      register: install_verification
+      with_dict: "{{ installers }}"
+      ignore_errors: yes
+
+    - name: Show installation results
+      debug:
+        msg: "{{ item.item.value.name }} installation status: {{ 'Successful' if item.stat.exists else 'Failed or not verified' }}"
+      with_items: "{{ install_verification.results }}"
+      ignore_errors: yes
+
+    - name: Show MS Office installation result
+      debug:
+        msg: "Microsoft Word installation {{ 'completed' if office_install_result.rc == 0 else 'failed' }}"
+
+    - name: Show Loom installation result
+      debug:
+        msg: "Loom installation attempt {{ 'completed' if loom_install_result.rc == 0 else 'failed' }}"
+      when: loom_install_result is defined
+
+    - name: Show ProofHub installation result
+      debug:
+        msg: "ProofHub installation attempt {{ 'completed' if proofhub_install.rc == 0 else 'failed' }}"
+      when: proofhub_install is defined

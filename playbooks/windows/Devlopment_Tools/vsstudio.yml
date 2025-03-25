@@ -1,0 +1,85 @@
+---
+- name: Install Visual Studio Community Edition on Windows
+  hosts: windows
+  gather_facts: yes
+  vars:
+    download_dir: "C:\\Users\\{{ ansible_user }}\\Downloads"
+    vs_bootstrapper_url: "https://aka.ms/vs/17/release/vs_community.exe"
+    # Workloads to install - customize as needed
+    workloads:
+      - Microsoft.VisualStudio.Workload.CoreEditor
+      - Microsoft.VisualStudio.Workload.ManagedDesktop
+      - Microsoft.VisualStudio.Workload.NetWeb
+    # Optional components
+    components:
+      - Microsoft.VisualStudio.Component.Git
+  
+  tasks:
+    - name: Create download directory if it doesn't exist
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    - name: Download Visual Studio bootstrapper
+      win_get_url:
+        url: "{{ vs_bootstrapper_url }}"
+        dest: "{{ download_dir }}\\vs_community.exe"
+      register: vs_download
+
+    # Prepare installation arguments with workloads and components
+    - name: Build installation arguments
+      set_fact:
+        install_args: "--passive --norestart --wait --includeRecommended"
+      changed_when: false
+
+    - name: Add workloads to installation arguments
+      set_fact:
+        install_args: "{{ install_args }} --add {{ item }}"
+      with_items: "{{ workloads }}"
+      changed_when: false
+
+    - name: Add components to installation arguments
+      set_fact:
+        install_args: "{{ install_args }} --add {{ item }}"
+      with_items: "{{ components }}"
+      changed_when: false
+
+    - name: Display installation command
+      debug:
+        msg: "Installing Visual Studio with: {{ install_args }}"
+
+    # This can take a very long time
+    - name: Install Visual Studio Community - this may take a long time (30+ minutes)
+      win_command: "{{ download_dir }}\\vs_community.exe {{ install_args }}"
+      register: vs_install
+      timeout: 3600  # 1 hour timeout
+      when: vs_download.changed
+      failed_when: vs_install.rc != 0 and vs_install.rc != 3010  # 3010 = reboot required
+
+    - name: Verify Visual Studio installation
+      win_shell: |
+        $vsPaths = @(
+          "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\devenv.exe",
+          "C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\Common7\IDE\devenv.exe"
+        )
+        
+        foreach ($path in $vsPaths) {
+          if (Test-Path $path) {
+            Write-Output "Visual Studio found at: $path"
+            exit 0
+          }
+        }
+        Write-Error "Visual Studio executable not found"
+        exit 1
+      register: vs_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display Visual Studio installation status
+      debug:
+        msg: "{{ vs_check.stdout_lines | default(['Visual Studio installation could not be verified']) }}"
+
+    - name: Check if reboot is required
+      debug:
+        msg: "Reboot may be required to complete the Visual Studio installation"
+      when: vs_install.rc is defined and vs_install.rc == 3010

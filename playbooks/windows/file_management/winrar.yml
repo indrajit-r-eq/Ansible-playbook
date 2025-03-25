@@ -1,0 +1,38 @@
+---
+- name: Install WinRAR on Windows hosts
+  hosts: windows
+  gather_facts: false
+  tasks:
+
+    # 1. Create download directory if it doesn't exist
+    - name: Create download directory
+      win_file:
+        path: C:\Temp
+        state: directory
+
+    # 2. Download WinRAR installer
+    - name: Download WinRAR installer
+      win_get_url:
+        url: https://www.rarlab.com/rar/winrar-x64-602.exe
+        dest: C:\Temp\winrar_installer.exe
+        force: no
+
+    # 3. Install WinRAR silently
+    - name: Install WinRAR silently
+      win_package:
+        path: C:\Temp\winrar_installer.exe
+        product_id: WinRAR
+        arguments: /S
+        state: present
+
+    # 4. Verify WinRAR installation
+    - name: Verify WinRAR installation
+      win_shell: if (Test-Path "C:\Program Files\WinRAR\WinRAR.exe") { Write-Output "WinRAR installed successfully" } else { Write-Error "WinRAR installation failed" }
+      register: winrar_install_result
+      ignore_errors: yes
+
+    # 5. Show WinRAR installation result
+    - name: Show WinRAR installation result
+      debug:
+        var: winrar_install_result.stdout
+

@@ -1,0 +1,17 @@
+---
+- hosts: windows
+  gather_facts: no
+  tasks:
+    - name: Raw Command to Check PowerShell
+      raw: powershell.exe -Command "Write-Host 'PowerShell is working'"
+      register: powershell_check
+
+    - name: System Information Retrieval
+      raw: systeminfo
+      register: system_info
+
+    - name: Debug WinRM Connectivity
+      debug:
+        msg: 
+          - "PowerShell Check: {{ powershell_check }}"
+          - "System Information: {{ system_info }}"

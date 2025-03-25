@@ -1,0 +1,89 @@
+---
+- name: Install Jira on Windows
+  hosts: all
+  gather_facts: yes
+  vars:
+    download_dir: "C:\\Temp\\software"
+    jira_url: "https://product-downloads.atlassian.com/software/jira/downloads/atlassian-jira-core-9.4.14-x64.exe"
+    jira_installer: "{{ download_dir }}\\jira_installer.exe"
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    - name: Download Jira
+      win_get_url:
+        url: "{{ jira_url }}"
+        dest: "{{ jira_installer }}"
+        timeout: 600
+
+    - name: Create response.varfile
+      win_copy:
+        content: |
+          reuseInstallation=false
+          sys.installationDir=C:\\Program Files\\Atlassian\\JIRA
+          launch.application=false
+          sys.confirmedUpdateInstallationString=false
+          sys.languageId=en
+          executeLauncherAction$Boolean=false
+          sys.acceptLicense$Boolean=true
+        dest: "{{ download_dir }}\\response.varfile"
+
+    - name: Install Jira
+      win_shell: Start-Process -FilePath "{{ jira_installer }}" -ArgumentList "-q -varfile {{ download_dir }}\\response.varfile" -Wait -NoNewWindow
+
+    - name: Wait for installation to complete
+      win_shell: Start-Sleep -s 30
+      changed_when: false
+
+    - name: Check for Jira installation
+      win_find:
+        paths: 
+          - "C:\\Program Files\\Atlassian"
+        file_type: directory
+        recurse: no
+      register: jira_check
+      failed_when: false
+
+    - name: Count installation directories
+      set_fact:
+        jira_directories_count: "{{ jira_check.matched | default(0) }}"
+
+    # Safer version of the file check task
+    - name: Check if Atlassian directory exists
+      win_stat:
+        path: "C:\\Program Files\\Atlassian"
+      register: atlassian_dir
+      failed_when: false
+
+    - name: Check for Jira files (if directory exists)
+      win_find:
+        paths:
+          - "C:\\Program Files\\Atlassian"
+        patterns: 
+          - "*.exe"
+          - "*.bat"
+        recurse: yes
+      register: jira_files
+      failed_when: false
+      when: atlassian_dir.stat.exists | default(false)
+      
+    - name: Count executable files
+      set_fact:
+        jira_files_count: "{{ jira_files.matched | default(0) }}"
+      when: atlassian_dir.stat.exists | default(false)
+
+    - name: Set default file count if directory doesn't exist
+      set_fact:
+        jira_files_count: 0
+      when: not (atlassian_dir.stat.exists | default(false))
+
+    - name: Installation Status Report
+      debug:
+        msg: |
+          Jira Installation Report:
+          - Status: {{ 'SUCCESS' if (jira_directories_count | int > 0) else 'FAILED' }}
+          - Directories Found: {{ jira_directories_count | default(0) }}
+          - Executable Files Found: {{ jira_files_count | default(0) }}
+          - Installation Location: {{ "C:\\Program Files\\Atlassian" if (jira_directories_count | int > 0) else "Not Found" }}

@@ -1,0 +1,63 @@
+---
+- hosts: windows
+  vars:
+    temp_dir: C:\Temp
+    nvm_download_url: https://github.com/coreybutler/nvm-windows/releases/download/1.1.11/nvm-setup.zip
+    nvm_install_path: C:\ProgramData\nvm
+
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ temp_dir }}"
+        state: directory
+
+    - name: Check if NVM is already installed
+      win_stat:
+        path: "{{ nvm_install_path }}"
+      register: nvm_installed
+
+    - name: Download NVM for Windows
+      win_get_url:
+        url: "{{ nvm_download_url }}"
+        dest: "{{ temp_dir }}\\nvm-setup.zip"
+        force: yes
+      when: not nvm_installed.stat.exists
+
+    - name: Unzip NVM installer
+      win_unzip:
+        src: "{{ temp_dir }}\\nvm-setup.zip"
+        dest: "{{ temp_dir }}\\nvm"
+      when: not nvm_installed.stat.exists
+
+    - name: Install NVM for Windows
+      block:
+        - name: Silent NVM Installation
+          win_command: 
+            cmd: "{{ temp_dir }}\\nvm\\nvm-setup.exe /SILENT /VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+            creates: "{{ nvm_install_path }}"
+          register: nvm_install_result
+
+        - name: Alternative Installation Method
+          win_shell: |
+            Start-Process "{{ temp_dir }}\\nvm\\nvm-setup.exe" -ArgumentList "/SILENT" -Wait
+          when: nvm_install_result.rc != 0
+
+    - name: Verify NVM Installation
+      win_command: nvm version
+      register: nvm_version
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Set NVM Environment Variables
+      win_environment:
+        name: PATH
+        value: "{{ nvm_install_path }}"
+        level: machine  # Add the missing level parameter
+      register: env_update
+
+    - name: Debug NVM Installation
+      debug:
+        msg:
+          - "NVM Installation Path: {{ nvm_install_path }}"
+          - "NVM Version: {{ nvm_version.stdout | default('Not Found') }}"
+          - "Installation Attempt Result: {{ nvm_install_result | default('No result') }}"

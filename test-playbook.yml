@@ -1,0 +1,14 @@
+---
+- name: Test playbook to check log generation
+  hosts: localhost
+  tasks:
+    - name: Create a test file
+      file:
+        path: /tmp/test_file.txt
+        state: touch
+      register: result
+
+    - name: Debug the result
+      debug:
+        var: result
+

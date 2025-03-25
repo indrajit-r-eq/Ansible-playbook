@@ -1,0 +1,50 @@
+---
+- hosts: windows
+  vars:
+    temp_dir: C:\Temp
+    filezilla_url: https://dl1.cdn.filezilla-project.org/client/FileZilla_3.68.1_win64-setup.exe?h=GY8xzFbVkvJFbtLhuAuyog&x=1742889323
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ temp_dir }}"
+        state: directory
+
+    - name: Download FileZilla installer
+      win_get_url:
+        url: "{{ filezilla_url }}"
+        dest: "{{ temp_dir }}\\filezilla_installer.exe"
+        force: yes
+        timeout: 600  # 10-minute timeout
+      register: filezilla_download
+
+    - name: Verify downloaded file exists
+      win_stat:
+        path: "{{ temp_dir }}\\filezilla_installer.exe"
+      register: installer_file
+
+    - name: Install FileZilla using alternative method
+      block:
+        - name: Install FileZilla using win_command
+          win_command:
+            cmd: "{{ temp_dir }}\\filezilla_installer.exe /S"
+            creates: "C:\\Program Files\\FileZilla FTP Client\\filezilla.exe"
+          register: filezilla_install
+          failed_when: false
+
+        - name: Fallback installation method
+          win_shell: |
+            Start-Process "{{ temp_dir }}\\filezilla_installer.exe" -ArgumentList "/S" -Wait
+          when: filezilla_install.rc != 0
+
+    - name: Verify FileZilla installation
+      win_stat:
+        path: C:\Program Files\FileZilla FTP Client\filezilla.exe
+      register: filezilla_installed
+
+    - name: Debug Installation Results
+      debug:
+        msg:
+          - "Download Result: {{ filezilla_download }}"
+          - "Installer File Exists: {{ installer_file.stat.exists }}"
+          - "Installation Command Result: {{ filezilla_install }}"
+          - "FileZilla Installed: {{ filezilla_installed.stat.exists }}"

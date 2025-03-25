@@ -1,0 +1,83 @@
+- name: Install WAMP, XAMPP
+  hosts: all
+  gather_facts: no
+  tasks:
+    # 1. Create Download Directory
+    - name: Create download directory
+      win_file:
+        path: C:\Temp
+        state: directory
+        
+    # 2. Download WAMP Server
+    - name: Download WAMP Server 3.3.0 (64-bit)
+      win_get_url:
+        url: "https://sourceforge.net/projects/wampserver/files/latest/download"
+        dest: "C:\\Temp\\wamp_installer.exe"
+        force: yes
+        
+    # 3. Download XAMPP
+    - name: Download XAMPP 7.4.33 (64-bit)
+      win_get_url:
+        url: "https://sourceforge.net/projects/xampp/files/XAMPP%20Windows/7.4.33/xampp-windows-x64-7.4.33-0-VC15-installer.exe"
+        dest: "C:\\Temp\\xampp_installer.exe"
+        force: yes
+        
+    # 4. Verify Downloads
+    - name: Verify WAMP download
+      win_shell: |
+        $file = Get-Item "C:\Temp\wamp_installer.exe"
+        "File size: $($file.Length) bytes"
+        "Last write time: $($file.LastWriteTime)"
+        "File exists: $(Test-Path 'C:\Temp\wamp_installer.exe')"
+      register: wamp_download_check
+      
+    - name: Verify XAMPP download
+      win_shell: |
+        $file = Get-Item "C:\Temp\xampp_installer.exe"
+        "File size: $($file.Length) bytes"
+        "Last write time: $($file.LastWriteTime)"
+        "File exists: $(Test-Path 'C:\Temp\xampp_installer.exe')"
+      register: xampp_download_check
+      
+    - name: Display WAMP download results
+      debug:
+        var: wamp_download_check.stdout_lines
+        
+    - name: Display XAMPP download results
+      debug:
+        var: xampp_download_check.stdout_lines
+        
+    # 5. Install WAMP silently
+    - name: Install WAMP Server silently
+      win_shell: |
+        Start-Process -FilePath "C:\Temp\wamp_installer.exe" -ArgumentList "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -NoNewWindow -Wait
+      register: wamp_install_output
+      ignore_errors: yes
+
+    # 6. Install XAMPP silently with debug logging
+    - name: Install XAMPP silently
+      win_shell: |
+        Start-Process -FilePath "C:\Temp\xampp_installer.exe" -ArgumentList "--mode unattended --debugtrace C:\Temp\xampp_install.log" -NoNewWindow -Wait
+      register: xampp_install_output
+      ignore_errors: yes
+
+      
+    # 7. Verify Installations
+    - name: Verify XAMPP installation
+      win_shell: if (Test-Path "C:\xampp\xampp-control.exe") { Write-Output "XAMPP installed successfully" } else { Write-Error "XAMPP installation failed" }
+      register: xampp_install_result
+      ignore_errors: yes
+      
+    - name: Verify WAMP installation
+      win_shell: if (Test-Path "C:\wamp64\wampmanager.exe") { Write-Output "WAMP installed successfully" } else { Write-Error "WAMP installation failed" }
+      register: wamp_install_result
+      ignore_errors: yes
+      
+    # 8. Show Installation Results
+    - name: Show XAMPP installation result
+      debug:
+        var: xampp_install_result.stdout
+        
+    - name: Show WAMP installation result
+      debug:
+        var: wamp_install_result.stdout

@@ -1,0 +1,46 @@
+2025-03-25 14:44:35,314 p=2915649 u=root n=ansible | ERROR! the playbook: your-playbook.yml could not be found
+2025-03-25 14:44:41,256 p=2915671 u=root n=ansible | [WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+2025-03-25 14:44:41,388 p=2915671 u=root n=ansible | [WARNING]: Could not match supplied host pattern, ignoring: windows
+
+2025-03-25 14:44:41,388 p=2915671 u=root n=ansible | PLAY [Test playbook to check log generation] **********************************************************************************************************************************************************************
+2025-03-25 14:44:41,388 p=2915671 u=root n=ansible | skipping: no hosts matched
+2025-03-25 14:44:41,389 p=2915671 u=root n=ansible | PLAY RECAP ********************************************************************************************************************************************************************************************************
+2025-03-25 14:45:09,581 p=2915785 u=root n=ansible | [WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+2025-03-25 14:45:09,713 p=2915785 u=root n=ansible | PLAY [Test playbook to check log generation] **********************************************************************************************************************************************************************
+2025-03-25 14:45:09,719 p=2915785 u=root n=ansible | TASK [Gathering Facts] ********************************************************************************************************************************************************************************************
+2025-03-25 14:45:10,737 p=2915785 u=root n=ansible | ok: [localhost]
+2025-03-25 14:45:10,752 p=2915785 u=root n=ansible | TASK [Create a test file] *****************************************************************************************************************************************************************************************
+2025-03-25 14:45:11,041 p=2915785 u=root n=ansible | changed: [localhost]
+2025-03-25 14:45:11,050 p=2915785 u=root n=ansible | TASK [Debug the result] *******************************************************************************************************************************************************************************************
+2025-03-25 14:45:11,061 p=2915785 u=root n=ansible | ok: [localhost] => {
+    "result": {
+        "changed": true,
+        "dest": "/tmp/test_file.txt",
+        "diff": {
+            "after": {
+                "atime": 1742894111.020099,
+                "mtime": 1742894111.020099,
+                "path": "/tmp/test_file.txt",
+                "state": "touch"
+            },
+            "before": {
+                "atime": 1742894111.0187495,
+                "mtime": 1742894111.0187495,
+                "path": "/tmp/test_file.txt",
+                "state": "absent"
+            }
+        },
+        "failed": false,
+        "gid": 0,
+        "group": "root",
+        "mode": "0644",
+        "owner": "root",
+        "size": 0,
+        "state": "file",
+        "uid": 0
+    }
+}
+2025-03-25 14:45:11,076 p=2915785 u=root n=ansible | PLAY RECAP ********************************************************************************************************************************************************************************************************
+2025-03-25 14:45:11,076 p=2915785 u=root n=ansible | localhost                  : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   

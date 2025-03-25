@@ -1,0 +1,37 @@
+---
+- name: Install Bitwise SSH Client on Windows hosts
+  hosts: windows
+  gather_facts: false
+  tasks:
+
+    # 1. Create download directory if it doesn't exist
+    - name: Create download directory
+      win_file:
+        path: C:\Temp
+        state: directory
+
+    # 2. Install Bitwise SSH Client
+    - name: Download Bitwise SSH Client installer
+      win_get_url:
+        url: https://dl.bitvise.com/BvSshClient-Inst.exe
+        dest: C:\Temp\bitwise-ssh-client.exe
+        force: no
+
+    - name: Install Bitwise SSH Client silently
+      win_package:
+        path: C:\Temp\bitwise-ssh-client.exe
+        product_id: Bitwise SSH Client
+        arguments: "-acceptEULA -exitZero -installDir=\"C:\\Program Files\\Bitvise SSH Client\""
+        state: present
+
+    # 3. Verify Bitwise SSH Client installation
+    - name: Verify Bitvise SSH Client installation
+      win_shell: if (Test-Path "C:\Program Files\Bitvise SSH Client\BvSsh.exe") { Write-Output "Bitvise SSH Client installed successfully" } else { Write-Error "Bitvise SSH Client installation failed" }
+      register: bitvise_install_result
+      ignore_errors: yes
+
+    # 4. Show Bitwise SSH Client installation result
+    - name: Show Bitwise SSH Client installation result
+      debug:
+        var: bitvise_install_result.stdout
+

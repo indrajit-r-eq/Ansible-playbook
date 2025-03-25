@@ -1,0 +1,33 @@
+---
+- name: Install Lightshot on Windows
+  hosts: all
+  gather_facts: yes
+  vars:
+    download_dir: "C:\\Temp\\software"
+    lightshot_url: "https://app.prntscr.com/build/setup-lightshot.exe"
+    lightshot_dest: "{{ download_dir }}\\lightshot_installer.exe"
+    lightshot_verify: "C:\\Program Files (x86)\\Skillbrains\\lightshot\\Lightshot.exe"
+
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    - name: Download Lightshot
+      win_get_url:
+        url: "{{ lightshot_url }}"
+        dest: "{{ lightshot_dest }}"
+        timeout: 600
+
+    - name: Install Lightshot
+      win_shell: Start-Process -FilePath "{{ lightshot_dest }}" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait
+
+    - name: Verify Lightshot Installation
+      win_stat:
+        path: "{{ lightshot_verify }}"
+      register: lightshot_check
+
+    - debug:
+        msg: "Lightshot installation {{ 'successful' if lightshot_check.stat.exists else 'failed' }}"
+

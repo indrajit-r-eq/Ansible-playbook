@@ -1,0 +1,22 @@
+---
+- name: Master Playbook to Run Multiple Playbooks
+  hosts: all
+  tasks:
+    - name: Include playbook for Sublime Text installation
+      import_playbook: sublime.yml
+
+    - name: Include playbook for Node.js installation
+      import_playbook: node.yml
+
+    - name: Include playbook for NVM installation
+      import_playbook: nvm.yml
+
+    - name: Include playbook for Sublime Text installation
+      import_playbook: vscode.yml
+
+    - name: Include playbook for Node.js installation
+      import_playbook: vsstudio.yml
+
+    - name: Include playbook for NVM installation
+      import_playbook: github.yml
+

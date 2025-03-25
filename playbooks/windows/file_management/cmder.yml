@@ -1,0 +1,43 @@
+---
+- name: Install CMDR (ConEmu) on Windows hosts
+  hosts: windows
+  gather_facts: false
+  tasks:
+
+    # 1. Create download directory if it doesn't exist
+    - name: Create download directory
+      win_file:
+        path: C:\Temp
+        state: directory
+
+    # 2. Download CMDR installer
+    - name: Download CMDR installer
+      win_get_url:
+        url: https://github.com/cmderdev/cmder/releases/download/v1.3.17/cmder.zip
+        dest: C:\Temp\cmder.zip
+        force: no
+
+    # 3. Extract CMDR
+    - name: Extract CMDR
+      win_unzip:
+        src: C:\Temp\cmder.zip
+        dest: C:\Temp
+        creates: C:\Temp\cmder
+
+    # 4. Create shortcut for CMDR
+    - name: Create shortcut for CMDR
+      win_shortcut:
+        src: C:\Temp\cmder\Cmder.exe
+        dest: C:\Users\Public\Desktop\Cmder.lnk
+
+    # 5. Verify CMDR installation
+    - name: Verify Cmder installation
+      win_shell: $cmderPath = Get-ChildItem -Path C:\Temp -Recurse -Filter "Cmder.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName; if ($cmderPath) { Write-Output "Cmder installed successfully at $cmderPath" } else { Write-Error "Cmder installation failed" }
+      register: cmder_install_result
+      ignore_errors: yes
+
+    # 6. Show CMDR installation result
+    - name: Show CMDR installation result
+      debug:
+        var: cmder_install_result.stdout
+

@@ -1,0 +1,54 @@
+---
+# LOOM INSTALLATION PLAYBOOK
+- name: Install Loom on Windows
+  hosts: all
+  gather_facts: yes
+  vars:
+    download_dir: "C:\\Temp\\software"
+    loom_url: "https://packages.loom.com/desktop-packages/Loom%20Setup%200.282.3.exe"
+    loom_installer: "{{ download_dir }}\\loom_installer.exe"
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    - name: Download Loom
+      win_get_url:
+        url: "{{ loom_url }}"
+        dest: "{{ loom_installer }}"
+        timeout: 600
+
+    - name: Install Loom
+      win_shell: Start-Process -FilePath "{{ loom_installer }}" -ArgumentList "/S" -Wait -NoNewWindow
+
+    - name: Wait for installation to complete
+      win_shell: Start-Sleep -s 20
+      changed_when: false
+
+    - name: Check Loom installation directories
+      win_stat:
+        path: "C:\\Users\\{{ ansible_user }}\\AppData\\Local\\Programs\\Loom"
+      register: loom_dir
+      failed_when: false
+
+    - name: Check alternative Loom installation path
+      win_stat:
+        path: "C:\\Program Files\\Loom"
+      register: loom_dir_alt
+      failed_when: false
+      when: not loom_dir.stat.exists | default(false)
+
+    - name: Installation Status Report
+      debug:
+        msg: |
+          Loom Installation Report:
+          - Status: {{ 'SUCCESS' if (loom_dir.stat.exists | default(false)) or (loom_dir_alt.stat.exists | default(false)) else 'FAILED' }}
+          - Installation Location: 
+            {% if loom_dir.stat.exists | default(false) %}
+            C:\Users\{{ ansible_user }}\AppData\Local\Programs\Loom
+            {% elif loom_dir_alt.stat.exists | default(false) %}
+            C:\Program Files\Loom
+            {% else %}
+            Not Found
+            {% endif %}

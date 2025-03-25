@@ -1,0 +1,36 @@
+---
+- name: Install Postman on Windows
+  hosts: all
+  gather_facts: yes
+  vars:
+    download_dir: "C:\\Temp\\software"
+    postman_url: "https://dl.pstmn.io/download/latest/win64"
+    postman_dest: "{{ download_dir }}\\postman_installer.exe"
+
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    - name: Download Postman
+      win_get_url:
+        url: "{{ postman_url }}"
+        dest: "{{ postman_dest }}"
+        timeout: 600
+
+    - name: Install Postman
+      win_shell: Start-Process -FilePath "{{ postman_dest }}" -ArgumentList "-silent" -Wait
+
+    - name: Check multiple possible Postman locations
+      win_find:
+        paths:
+          - "C:\\Users\\{{ ansible_user }}\\AppData\\Local\\Postman"
+          - "C:\\Program Files\\Postman"
+          - "C:\\Users\\Public\\Desktop"
+        patterns: "Postman.exe"
+      register: postman_check
+
+    - name: Debug Installation Check
+      debug:
+        msg: "Postman installation {{ 'successful' if postman_check.matched > 0 else 'failed' }}"

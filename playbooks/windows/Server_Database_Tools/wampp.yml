@@ -1,0 +1,234 @@
+---
+- name: Install WAMP Server
+  hosts: all
+  gather_facts: no
+  vars:
+    download_path: C:\Temp
+    install_log_path: C:\Temp\wamp_install.log
+    wamp_installer: wamp_installer.exe
+    # Keep the original download URL that was working
+    wamp_url: "https://sourceforge.net/projects/wampserver/files/latest/download"
+    timeout_seconds: 3600  # 60 minutes timeout for installation
+
+  tasks:
+    # 1. Create Download Directory
+    - name: Create download directory
+      win_file:
+        path: "{{ download_path }}"
+        state: directory
+
+    # 2. Download WAMP Server
+    - name: Download WAMP Server installer
+      win_get_url:
+        url: "{{ wamp_url }}"
+        dest: "{{ download_path }}\\{{ wamp_installer }}"
+        force: no  # Only download if not present
+        timeout: 900  # 15 minute download timeout
+
+    # 3. Verify Download
+    - name: Verify WAMP download
+      win_stat:
+        path: "{{ download_path }}\\{{ wamp_installer }}"
+      register: wamp_file
+
+    - name: Display WAMP download results
+      debug:
+        msg: 
+          - "File size: {{ wamp_file.stat.size }} bytes"
+          - "File exists: {{ wamp_file.stat.exists }}"
+          - "File path: {{ download_path }}\\{{ wamp_installer }}"
+
+    # 4. Check for prerequisites
+    - name: Check for Microsoft Visual C++ Redistributables
+      win_shell: |
+        $vcs = @(
+          "Microsoft Visual C++ 2015-2022",
+          "Microsoft Visual C++ 2013",
+          "Microsoft Visual C++ 2012",
+          "Microsoft Visual C++ 2010"
+        )
+        
+        foreach ($vc in $vcs) {
+          $installed = Get-WmiObject -Class Win32_Product | Where-Object { 
+            $_.Name -like "*$vc*" -and $_.Name -like "*x64*" 
+          }
+          if ($installed) {
+            Write-Output "$vc Redistributable x64 is installed"
+          } else {
+            Write-Output "$vc Redistributable x64 is NOT installed"
+          }
+        }
+      register: vcredist_check
+
+    - name: Display Visual C++ check results
+      debug:
+        var: vcredist_check.stdout_lines
+
+    # 5. Download and install Visual C++ 2015-2022 Redistributable if needed
+    - name: Download Visual C++ 2015-2022 Redistributable
+      win_get_url:
+        url: "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        dest: "{{ download_path }}\\vc_redist_2022.x64.exe"
+      when: "'2015-2022 Redistributable x64 is NOT installed' in vcredist_check.stdout"
+
+    - name: Install Visual C++ 2015-2022 Redistributable
+      win_shell: |
+        Start-Process -FilePath "{{ download_path }}\vc_redist_2022.x64.exe" -ArgumentList "/install", "/quiet", "/norestart" -NoNewWindow -Wait
+      when: "'2015-2022 Redistributable x64 is NOT installed' in vcredist_check.stdout"
+      register: vcredist_install
+
+    # 6. Check if WAMP is already installed
+    - name: Check if WAMP is already installed
+      win_stat:
+        path: C:\wamp64\wampmanager.exe
+      register: wamp_installed
+
+    # 7. Kill any potentially running installers
+    - name: Kill any running installer processes
+      win_shell: |
+        Get-Process | Where-Object { $_.ProcessName -like "*wamp*" -or $_.ProcessName -like "*install*" } | ForEach-Object { 
+          Write-Output "Killing process: $($_.ProcessName) (ID: $($_.Id))"
+          Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue 
+        }
+      ignore_errors: yes
+      when: not wamp_installed.stat.exists
+
+    # 8. Temporarily disable Windows Defender real-time protection
+    - name: Temporarily disable Windows Defender real-time scanning
+      win_shell: |
+        Try {
+          Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+          Write-Output "Windows Defender real-time monitoring temporarily disabled"
+        } Catch {
+          Write-Output "Could not disable Windows Defender: $($_.Exception.Message)"
+        }
+      ignore_errors: yes
+      when: not wamp_installed.stat.exists
+      register: defender_status
+
+    # 9. Create a PowerShell script to run the installation
+    - name: Create installation script
+      win_copy:
+        content: |
+          $ErrorActionPreference = "Continue"
+          $logFile = "{{ install_log_path }}"
+          
+          # Start transcript logging
+          Start-Transcript -Path "{{ download_path }}\wamp_install_transcript.log" -Append
+          
+          Write-Output "Starting WAMP installation at $(Get-Date)"
+          Write-Output "Installer path: {{ download_path }}\{{ wamp_installer }}"
+          
+          # Check if file exists
+          if (!(Test-Path "{{ download_path }}\{{ wamp_installer }}")) {
+            Write-Error "Installer file not found!"
+            exit 1
+          }
+          
+          # Run installer with parameters
+          try {
+            $process = Start-Process -FilePath "{{ download_path }}\{{ wamp_installer }}" -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -PassThru -NoNewWindow
+            Write-Output "Process started with ID: $($process.Id)"
+            
+            # Wait for process to complete
+            $process.WaitForExit(1800000)  # Wait up to 30 minutes
+            
+            if ($process.HasExited) {
+              Write-Output "Process completed with exit code: $($process.ExitCode)"
+              exit $process.ExitCode
+            } else {
+              Write-Error "Installation timed out after 30 minutes"
+              Stop-Process -Id $process.Id -Force
+              exit 1
+            }
+          } catch {
+            Write-Error "Error during installation: $_"
+            exit 1
+          } finally {
+            Stop-Transcript
+          }
+        dest: "{{ download_path }}\\run_wamp_install.ps1"
+      when: not wamp_installed.stat.exists
+
+    # 10. Run the installation script
+    - name: Run WAMP installation script
+      win_shell: |
+        PowerShell.exe -ExecutionPolicy Bypass -File "{{ download_path }}\run_wamp_install.ps1"
+      args:
+        creates: C:\wamp64\wampmanager.exe
+      register: install_result
+      when: not wamp_installed.stat.exists
+      ignore_errors: yes
+
+    # 11. Re-enable Windows Defender
+    - name: Re-enable Windows Defender real-time scanning
+      win_shell: |
+        Try {
+          Set-MpPreference -DisableRealtimeMonitoring $false -ErrorAction SilentlyContinue
+          Write-Output "Windows Defender real-time monitoring re-enabled"
+        } Catch {
+          Write-Output "Could not re-enable Windows Defender: $($_.Exception.Message)"
+        }
+      ignore_errors: yes
+      when: defender_status is defined and defender_status.changed
+
+    # 12. Check installation logs and transcript
+    - name: Check installation transcript
+      win_shell: |
+        if (Test-Path "{{ download_path }}\wamp_install_transcript.log") {
+          Get-Content "{{ download_path }}\wamp_install_transcript.log" -Tail 50
+        } else {
+          Write-Output "No installation transcript found"
+        }
+      register: install_transcript
+      when: install_result is defined
+      ignore_errors: yes
+
+    - name: Display installation transcript
+      debug:
+        var: install_transcript.stdout_lines
+      when: install_transcript is defined
+
+    # 13. Verify if each component is installed
+    - name: Check for installation components
+      win_shell: |
+        $components = @{
+          "WAMP Directory" = "C:\wamp64";
+          "Apache" = "C:\wamp64\bin\apache";
+          "MySQL" = "C:\wamp64\bin\mysql";
+          "PHP" = "C:\wamp64\bin\php";
+          "WAMP Manager" = "C:\wamp64\wampmanager.exe"
+        }
+        
+        foreach ($comp in $components.GetEnumerator()) {
+          if (Test-Path $comp.Value) {
+            Write-Output "$($comp.Key): INSTALLED"
+          } else {
+            Write-Output "$($comp.Key): MISSING"
+          }
+        }
+      register: component_check
+      ignore_errors: yes
+
+    - name: Display component check results
+      debug:
+        var: component_check.stdout_lines
+      when: component_check is defined
+
+    # 14. Verify Installation
+    - name: Verify WAMP installation
+      win_stat:
+        path: C:\wamp64\wampmanager.exe
+      register: wamp_verification
+
+    # 15. Show Installation Result
+    - name: Show WAMP installation result
+      debug:
+        msg: "WAMP {{ 'installed successfully' if wamp_verification.stat.exists else 'installation failed' }}"
+
+    # 16. Start WAMP Server service if installed
+    - name: Start WAMP services
+      win_shell: |
+        Start-Process -FilePath "C:\wamp64\wampmanager.exe" -WindowStyle Minimized
+      when: wamp_verification.stat.exists
+      ignore_errors: yes

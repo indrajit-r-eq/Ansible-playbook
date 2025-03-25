@@ -1,0 +1,27 @@
+#[windows]
+#192.168.0.138
+
+#[windows:vars]
+#ansible_connection=winrm
+#ansible_winrm_server_cert_validation=ignore
+#ansible_winrm_transport=ntlm
+#ansible_user=maulik.rana
+#ansible_password=eQuest@12345
+#ansible_winrm_transport=ntlm
+#ansible_port=5985  # HTTP port (use 5986 for HTTP
+
+[windows]
+maulik-rana ansible_host=192.168.0.138 ansible_user=maulik.rana ansible_password=eQuest@12345
+indrajit-rathod ansible_host=192.168.0.108 ansible_user=indrajitsinh.rathod ansible_password=eQuest@12345
+testing-1 ansible_host=192.168.0.145 ansible_user=indrajitsinh.rathod ansible_password=eQuest@12345
+aditya-jethwa ansible_host=192.168.0.153 ansible_user=aditya.jethwa ansible_password=eQuest@12345
+[windows:vars]
+ansible_connection=winrm
+ansible_winrm_server_cert_validation=ignore
+ansible_winrm_transport=ntlm
+ansible_port=5985
+
+
+[ubuntu]
+indra-ubuntu ansible_host=192.168.0.108
+test-ubuntu ansible_host=192.168.0.125

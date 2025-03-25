@@ -1,0 +1,58 @@
+---
+- name: Install Development Tools on Windows
+  hosts: windows
+  vars:
+    temp_dir: C:\Temp
+    github_desktop_path: 'C:\Program Files\GitHub Desktop\GitHub Desktop.exe'
+    github_download_url: 'https://central.github.com/deployments/desktop/desktop/latest/win32'
+
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ temp_dir }}"
+        state: directory
+
+    - name: Check if GitHub Desktop is already installed
+      win_stat:
+        path: "{{ github_desktop_path }}"
+      register: github_installed
+
+    - name: Download GitHub Desktop installer
+      win_get_url:
+        url: "{{ github_download_url }}"
+        dest: "{{ temp_dir }}\\GitHubDesktopSetup.exe"
+        force: yes
+      when: not github_installed.stat.exists
+
+    - name: Install GitHub Desktop
+      win_command:
+        cmd: "{{ temp_dir }}\\GitHubDesktopSetup.exe /SILENT /VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+        creates: "{{ github_desktop_path }}"
+      when: not github_installed.stat.exists
+      register: github_install_result
+
+    - name: Verify GitHub Desktop installation
+      block:
+        - name: Check GitHub Desktop executable exists
+          win_stat:
+            path: "{{ github_desktop_path }}"
+          register: github_executable
+
+        - name: Attempt to get version (alternative method)
+          win_shell: |
+            $path = "{{ github_desktop_path }}"
+            if (Test-Path $path) {
+              (Get-Item $path).VersionInfo.FileVersion
+            } else {
+              "Not Found"
+            }
+          register: github_version
+          changed_when: false
+          failed_when: false
+
+    - name: Debug GitHub Desktop Installation
+      debug:
+        msg:
+          - "GitHub Desktop Installed: {{ github_executable.stat.exists | default(false) }}"
+          - "GitHub Desktop Version: {{ github_version.stdout | default('Unknown') }}"
+          - "Installation Result: {{ github_install_result | default('No installation attempt') }}"

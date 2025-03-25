@@ -1,0 +1,33 @@
+---
+- name: Install Ditto on Windows
+  hosts: all
+  gather_facts: yes
+  vars:
+    download_dir: "C:\\Temp\\software"
+    ditto_url: "https://github.com/sabrogden/Ditto/releases/download/3.24.246.0/DittoSetup_64bit_3_24_246_0.exe"
+    ditto_dest: "{{ download_dir }}\\ditto_installer.exe"
+    ditto_verify: "C:\\Program Files\\Ditto\\Ditto.exe"
+
+  tasks:
+    - name: Ensure download directory exists
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    - name: Download Ditto
+      win_get_url:
+        url: "{{ ditto_url }}"
+        dest: "{{ ditto_dest }}"
+        timeout: 600
+
+    - name: Install Ditto
+      win_shell: Start-Process -FilePath "{{ ditto_dest }}" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait
+
+    - name: Verify Ditto Installation
+      win_stat:
+        path: "{{ ditto_verify }}"
+      register: ditto_check
+
+    - debug:
+        msg: "Ditto installation {{ 'successful' if ditto_check.stat.exists else 'failed' }}"
+

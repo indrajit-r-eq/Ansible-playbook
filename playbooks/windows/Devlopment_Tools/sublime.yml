@@ -1,0 +1,146 @@
+---
+- name: Install Node.js 22 and NVM on Windows
+  hosts: windows
+  gather_facts: yes
+  vars:
+    nvm_version: "1.1.11"
+    node_version: "22.14.0"  # Latest Node.js 22 as of March 2025
+    download_dir: "C:\\Users\\{{ ansible_user }}\\Downloads"
+    nvm_install_dir: "C:\\Users\\{{ ansible_user }}\\AppData\\Roaming\\nvm"
+  
+  tasks:
+    - name: Create download directory if it doesn't exist
+      win_file:
+        path: "{{ download_dir }}"
+        state: directory
+
+    - name: Download NVM for Windows installer
+      win_get_url:
+        url: "https://github.com/coreybutler/nvm-windows/releases/download/{{ nvm_version }}/nvm-setup.exe"
+        dest: "{{ download_dir }}\\nvm-setup.exe"
+      register: nvm_download
+
+    - name: Install NVM for Windows silently
+      win_package:
+        path: "{{ download_dir }}\\nvm-setup.exe"
+        arguments: "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES"
+        state: present
+      when: nvm_download.changed
+
+    - name: Wait for NVM to be installed
+      win_shell: Start-Sleep -s 15
+
+    # Check for the actual NVM executable location
+    - name: Find NVM executable location
+      win_shell: |
+        $locations = @(
+          "C:\Program Files\nvm\nvm.exe",
+          "C:\Program Files (x86)\nvm\nvm.exe",
+          "$env:APPDATA\nvm\nvm.exe",
+          "$env:USERPROFILE\AppData\Roaming\nvm\nvm.exe"
+        )
+        
+        foreach ($loc in $locations) {
+          if (Test-Path $loc) {
+            Write-Output $loc
+            exit 0
+          }
+        }
+        
+        Write-Error "NVM executable not found"
+        exit 1
+      register: nvm_exe_path
+      changed_when: false
+      failed_when: nvm_exe_path.rc != 0
+
+    - name: Display NVM executable path
+      debug:
+        msg: "Found NVM at {{ nvm_exe_path.stdout_lines[0] }}"
+
+    # Direct approach to install Node.js
+    - name: Install Node.js directly
+      win_shell: |
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $nvmPath = "{{ nvm_exe_path.stdout_lines[0] }}"
+        Start-Process -FilePath $nvmPath -ArgumentList "install", "{{ node_version }}" -NoNewWindow -Wait
+      register: node_install
+      failed_when: false
+
+    - name: Set Node.js as default version
+      win_shell: |
+        $nvmPath = "{{ nvm_exe_path.stdout_lines[0] }}"
+        Start-Process -FilePath $nvmPath -ArgumentList "use", "{{ node_version }}" -NoNewWindow -Wait
+      failed_when: false
+
+    # Force refresh environment after installation
+    - name: Refresh environment PATH
+      win_shell: |
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        Write-Output $env:Path
+
+    # Check for nodejs installation in proper locations
+    - name: Find installed Node.js binaries
+      win_shell: |
+        $nodePaths = @(
+          "$env:APPDATA\nvm\v{{ node_version }}\node.exe",
+          "$env:USERPROFILE\AppData\Roaming\nvm\v{{ node_version }}\node.exe",
+          "C:\Program Files\nodejs\node.exe"
+        )
+        
+        foreach ($path in $nodePaths) {
+          if (Test-Path $path) {
+            Write-Output "Node.js found at: $path"
+          }
+        }
+      register: node_location
+      changed_when: false
+      failed_when: false
+
+    - name: Display Node location
+      debug:
+        msg: "{{ node_location.stdout_lines }}"
+
+    # Test Node.js with full path
+    - name: Get Node.js version using full path
+      win_shell: |
+        $nodePaths = @(
+          "$env:APPDATA\nvm\v{{ node_version }}\node.exe",
+          "$env:USERPROFILE\AppData\Roaming\nvm\v{{ node_version }}\node.exe"
+        )
+        
+        foreach ($path in $nodePaths) {
+          if (Test-Path $path) {
+            & $path --version
+            exit 0
+          }
+        }
+      register: node_version_check
+      changed_when: false
+      failed_when: false
+
+    # Set alias for node/npm if not in PATH
+    - name: Create PowerShell profile directory if not exists
+      win_file:
+        path: "{{ ansible_env.USERPROFILE }}\\Documents\\WindowsPowerShell"
+        state: directory
+      failed_when: false
+
+    - name: Create PowerShell profile with Node.js aliases
+      win_lineinfile:
+        path: "{{ ansible_env.USERPROFILE }}\\Documents\\WindowsPowerShell\\Microsoft.PowerShell_profile.ps1"
+        line: |
+          # Added by Ansible for Node.js access
+          $nodePath = "$env:APPDATA\nvm\v{{ node_version }}"
+          if (Test-Path "$nodePath\node.exe") {
+            Set-Alias -Name node -Value "$nodePath\node.exe" -Scope Global
+            Set-Alias -Name npm -Value "$nodePath\npm.cmd" -Scope Global
+            if (!(($env:Path -split ';') -contains $nodePath)) {
+              $env:Path += ";$nodePath"
+            }
+          }
+        create: yes
+      failed_when: false
+
+    - name: Display Node.js version
+      debug:
+        msg: "Node.js version: {{ node_version_check.stdout | default('Not installed or not in PATH - check setup') }}"

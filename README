@@ -1,1 +1,80 @@
+Steps to Add ansible configuration :-
 
+
+Step 1: Open window powershell as administrator on windows machine
+Step 2: Run this commands: 
+
+1. winrm quickconfig
+
+output :-- WinRM service is already running on this machine.
+	   WinRM is already set up for remote management.
+
+2. winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+
+output :-- Service
+           AllowUnencrypted = true
+
+3. winrm set winrm/config/service/auth '@{Basic="true"}'
+
+4. winrm set winrm/config/listener?Address=*+Transport=HTTP '@{Port="5985"}'
+
+output :-- Listener
+           Address = *
+           Transport = HTTP
+           Port = 5985
+
+5. netsh advfirewall firewall add rule name="WinRM HTTP" dir=in action=allow protocol=TCP localport=5985
+
+output :-- ok.
+
+6. winrm enumerate winrm/config/listener
+
+output :-- Listener
+           Address = *
+    	   Transport = HTTP
+           Port = 5985
+           Enabled = true
+
+7.Restart-Service WinRM
+8.Get-Service -Name WinRM  output :-- running
+
+
+
+
+--------------- Add below steps in UBUNTU where ansible is installed ----------------------
+
+
+Step 1: open ansible directory
+
+#  cd /etc/ansible
+
+Step 2: Open inventory file and add credential 
+
+1. nano inventory
+2. In windows section add this line :-
+	[--user_name--] ansible_host=[--Host_ip--] ansible_user=[--username_windows--] ansible_password=[--windows_password--]
+3.Run this command to check connection :-
+#   ansible -i inventory [--user_name--] -m win_ping
+
+output :-- 
+[--user_name--] | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+ 	
+
+----------------- Commands-----------------------------------
+
+Here i have create so many playbooks to download and install softwares :
+PATH : -- /etc/ansible/playbooks/windows/
+
+1. Devlopment_Tools :- github_desktop.yml  master_playbook.yml  node.yml  nvm.yml  sublime.yml  vscode.yml  vsstudio.yml
+2 file_management :- bitwise_ssh_client.yml  cmder.yml  filezilla.yml  master_file_mgmt.yml  winrar.yml
+3. Prod_Collab_Tool :- install_ditto.yml  install_lightshot.yml  install_postman.yml install_jira.yml   install_loom.yml  prod_collab.yml
+4. Server_Database_Tools :- database.yml wampp.yml  xampp.yml
+
+you can run any playbook by this command :- 
+
+ansible-playbook -i <-PATH to inventory-> -l <-specified-user name-> <-path to Yaml file->
+
+ex; ansible-playbook -i /etc/ansible/inventory -l testing-1 /etc/ansible/playbooks/windows/Devlopment_Tools/node.yml

@@ -132,3 +132,44 @@
 2025-03-25 17:20:43,584 p=2950950 u=root n=ansible | skipping: [testing-1]
 2025-03-25 17:20:43,591 p=2950950 u=root n=ansible | PLAY RECAP ********************************************************************************************************************************************************************************************************
 2025-03-25 17:20:43,591 p=2950950 u=root n=ansible | testing-1                  : ok=5    changed=1    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+2025-03-26 10:53:22,075 p=3192264 u=root n=ansible | [WARNING]: Collection ansible.windows does not support Ansible version 2.13.13
+
+2025-03-26 10:53:22,090 p=3192264 u=root n=ansible | PLAY [Get Installed Software and Copy to Ubuntu] ******************************************************************************************************************************************************************
+2025-03-26 10:53:22,099 p=3192264 u=root n=ansible | TASK [Fetch Installed Software on Windows] ************************************************************************************************************************************************************************
+2025-03-26 10:53:31,275 p=3192264 u=root n=ansible | changed: [testing-1]
+2025-03-26 10:53:31,279 p=3192264 u=root n=ansible | TASK [Copy Installed Software List to Ubuntu] *********************************************************************************************************************************************************************
+2025-03-26 10:53:33,899 p=3192264 u=root n=ansible | changed: [testing-1]
+2025-03-26 10:53:33,903 p=3192264 u=root n=ansible | TASK [Remove File from Windows (Optional)] ************************************************************************************************************************************************************************
+2025-03-26 10:53:35,543 p=3192264 u=root n=ansible | changed: [testing-1]
+2025-03-26 10:53:35,549 p=3192264 u=root n=ansible | PLAY RECAP ********************************************************************************************************************************************************************************************************
+2025-03-26 10:53:35,549 p=3192264 u=root n=ansible | testing-1                  : ok=3    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+2025-03-26 10:57:55,476 p=3193298 u=root n=ansible | [WARNING]: Collection ansible.windows does not support Ansible version 2.13.13
+
+2025-03-26 10:57:55,492 p=3193298 u=root n=ansible | PLAY [Get Installed Software from Windows Registry and Copy to Ubuntu] ********************************************************************************************************************************************
+2025-03-26 10:57:55,500 p=3193298 u=root n=ansible | TASK [Fetch Installed Software from Windows Registry] *************************************************************************************************************************************************************
+2025-03-26 10:57:57,896 p=3193298 u=root n=ansible | changed: [testing-1]
+2025-03-26 10:57:57,900 p=3193298 u=root n=ansible | TASK [Copy Installed Software List to Ubuntu] *********************************************************************************************************************************************************************
+2025-03-26 10:58:00,525 p=3193298 u=root n=ansible | changed: [testing-1]
+2025-03-26 10:58:00,529 p=3193298 u=root n=ansible | TASK [Remove File from Windows (Optional)] ************************************************************************************************************************************************************************
+2025-03-26 10:58:02,098 p=3193298 u=root n=ansible | changed: [testing-1]
+2025-03-26 10:58:02,105 p=3193298 u=root n=ansible | PLAY RECAP ********************************************************************************************************************************************************************************************************
+2025-03-26 10:58:02,106 p=3193298 u=root n=ansible | testing-1                  : ok=3    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+2025-03-26 11:12:45,745 p=3196659 u=root n=ansible | [WARNING]: Collection ansible.windows does not support Ansible version 2.13.13
+
+2025-03-26 11:12:45,758 p=3196659 u=root n=ansible | PLAY [Get list of installed software on Windows] ******************************************************************************************************************************************************************
+2025-03-26 11:12:45,767 p=3196659 u=root n=ansible | TASK [Get installed software from registry and remove empty entries] **********************************************************************************************************************************************
+2025-03-26 11:12:48,125 p=3196659 u=root n=ansible | changed: [testing-1]
+2025-03-26 11:12:48,129 p=3196659 u=root n=ansible | TASK [Copy the file to the Ansible control machine] ***************************************************************************************************************************************************************
+2025-03-26 11:12:48,142 p=3196659 u=root n=ansible | An exception occurred during task execution. To see the full traceback, use -vvv. The error was: If you are using a module and expect the file to exist on the remote, see the remote_src option
+2025-03-26 11:12:48,143 p=3196659 u=root n=ansible | fatal: [testing-1]: FAILED! => {"changed": false, "dest": "/etc/ansible/installed_software.txt", "msg": "Could not find or access 'C:\\installed_software.txt'\nSearched in:\n\t/etc/ansible/files/C:\\installed_software.txt\n\t/etc/ansible/C:\\installed_software.txt\n\t/etc/ansible/files/C:\\installed_software.txt\n\t/etc/ansible/C:\\installed_software.txt on the Ansible Controller.\nIf you are using a module and expect the file to exist on the remote, see the remote_src option", "src": "C:\\installed_software.txt"}
+2025-03-26 11:12:48,144 p=3196659 u=root n=ansible | PLAY RECAP ********************************************************************************************************************************************************************************************************
+2025-03-26 11:12:48,144 p=3196659 u=root n=ansible | testing-1                  : ok=1    changed=1    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+2025-03-26 11:18:17,687 p=3197894 u=root n=ansible | [WARNING]: Collection ansible.windows does not support Ansible version 2.13.13
+
+2025-03-26 11:18:17,701 p=3197894 u=root n=ansible | PLAY [Get list of installed software on Windows] ******************************************************************************************************************************************************************
+2025-03-26 11:18:17,711 p=3197894 u=root n=ansible | TASK [Get installed software from registry and remove empty entries] **********************************************************************************************************************************************
+2025-03-26 11:18:19,933 p=3197894 u=root n=ansible | changed: [testing-1]
+2025-03-26 11:18:19,937 p=3197894 u=root n=ansible | TASK [Fetch the file from Windows host to Ansible control machine] ************************************************************************************************************************************************
+2025-03-26 11:18:22,488 p=3197894 u=root n=ansible | changed: [testing-1]
+2025-03-26 11:18:22,494 p=3197894 u=root n=ansible | PLAY RECAP ********************************************************************************************************************************************************************************************************
+2025-03-26 11:18:22,495 p=3197894 u=root n=ansible | testing-1                  : ok=2    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   

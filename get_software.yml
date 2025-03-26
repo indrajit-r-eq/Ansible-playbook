@@ -1,0 +1,24 @@
+---
+- name: Get list of installed software on Windows
+  hosts: windows
+  gather_facts: no
+
+  tasks:
+    - name: Get installed software from registry and remove empty entries
+      win_shell: |
+        $installed_software = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | 
+        Select-Object DisplayName, DisplayVersion | 
+        Where-Object { $_.DisplayName -ne $null } | 
+        Sort-Object DisplayName
+
+        $installed_software | ForEach-Object { "$($_.DisplayName) $($_.DisplayVersion)" } | 
+        Out-File -FilePath "C:\installed_software.txt" -Force
+      args:
+        chdir: "C:\\"
+
+    - name: Fetch the file from Windows host to Ansible control machine
+      fetch:
+        src: C:\installed_software.txt
+        dest: /etc/ansible/installed_software.txt
+        flat: yes
+
